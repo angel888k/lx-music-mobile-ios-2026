@@ -27,6 +27,15 @@ export const getDeviceLanguage = async() => {
 export const isAndroid = Platform.OS === 'android'
 // @ts-expect-error
 export const osVer = Platform.constants.Release as string
+export const iosIconButtonShadowReset = Platform.OS === 'ios'
+  ? {
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      shadowOffset: { width: 0, height: 0 },
+      textShadowRadius: 0,
+      textShadowOffset: { width: 0, height: 0 },
+    }
+  : {}
 
 export const isActive = () => AppState.currentState == 'active'
 
@@ -56,9 +65,13 @@ export const TEMP_FILE_PATH = temporaryDirectoryPath + '/tempFile'
 //   // return windowSize
 // }
 
-export const checkStoragePermissions = async() => PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE)
+export const checkStoragePermissions = async() => {
+  if (!isAndroid) return true
+  return PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE)
+}
 
 export const requestStoragePermission = async() => {
+  if (!isAndroid) return true
   const isGranted = await checkStoragePermissions()
   if (isGranted) return isGranted
 
@@ -105,6 +118,11 @@ export const requestStoragePermission = async() => {
  * @param position 位置
  */
 export const toast = (message: string, duration: 'long' | 'short' = 'short', position: 'top' | 'center' | 'bottom' = 'bottom') => {
+  if (!isAndroid) {
+    Alert.alert('', message)
+    return
+  }
+
   let _duration
   switch (duration) {
     case 'long':

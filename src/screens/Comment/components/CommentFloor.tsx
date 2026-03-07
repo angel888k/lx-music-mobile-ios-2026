@@ -1,5 +1,5 @@
 import { memo, useState, useMemo, useCallback } from 'react'
-import { StyleSheet, View } from 'react-native'
+import { Platform, StyleSheet, View } from 'react-native'
 import { BorderWidths } from '@/theme'
 import { Icon } from '@/components/common/Icon'
 import { createStyle } from '@/utils/tools'
@@ -17,6 +17,7 @@ const defaultUser = require('@/resources/images/defaultUser.jpg')
 
 const GAP = 12
 const avatarWidth = scaleSizeW(36)
+const dashedBorderStyle = Platform.OS == 'ios' ? 'solid' : 'dashed'
 
 const CommentFloor = memo(({ comment, isLast }: {
   comment: Comment
@@ -106,7 +107,7 @@ const styles = createStyle({
     marginTop: GAP,
     paddingBottom: GAP,
     borderBottomWidth: BorderWidths.normal,
-    borderStyle: 'dashed',
+    borderStyle: dashedBorderStyle,
   },
   comment: {
     flex: 1,
@@ -148,7 +149,7 @@ const styles = createStyle({
     marginLeft: 20,
     borderTopWidth: BorderWidths.normal,
     // backgroundColor: 'rgba(0,0,0,0.1)',
-    borderStyle: 'dashed',
+    borderStyle: dashedBorderStyle,
   },
 })
 

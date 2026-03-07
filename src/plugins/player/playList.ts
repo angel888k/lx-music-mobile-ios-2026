@@ -1,6 +1,13 @@
 import TrackPlayer, { State } from 'react-native-track-player'
 import BackgroundTimer from 'react-native-background-timer'
+import { Platform } from 'react-native'
 import { defaultUrl } from '@/config'
+import { setMaxplayTime } from '@/core/player/progress'
+import { formatPlayTime2 } from '@/utils/common'
+import { updateListMusics } from '@/core/list'
+import playerState from '@/store/player/state'
+import { getDuration } from './time'
+import { updateNowPlayingMetadata } from './nowPlaying'
 // import { action as playerAction } from '@/store/modules/player'
 import settingState from '@/store/setting/state'
 
@@ -51,6 +58,7 @@ const buildTracks = (musicInfo: LX.Player.PlayMusic, url?: LX.Player.Track['url'
       duration,
     })
   }
+  if (Platform.OS == 'ios' && url) return track
   track.push({
     id: `${mInfo.id}__//${Math.random()}__//default`,
     url: defaultUrl,
@@ -110,7 +118,7 @@ export const getCurrentTrack = async() => {
 
 export const updateMetaData = async(musicInfo: LX.Player.MusicInfo, isPlay: boolean, lyric?: string, force = false) => {
   if (!force && isPlay == state.isPlaying) {
-    const duration = await TrackPlayer.getDuration()
+    const duration = await getDuration()
     if (state.prevDuration != duration) {
       state.prevDuration = duration
       const trackInfo = await getCurrentTrack()
@@ -119,7 +127,7 @@ export const updateMetaData = async(musicInfo: LX.Player.MusicInfo, isPlay: bool
       }
     }
   } else {
-    const [duration, trackInfo] = await Promise.all([TrackPlayer.getDuration(), getCurrentTrack()])
+    const [duration, trackInfo] = await Promise.all([getDuration(), getCurrentTrack()])
     state.prevDuration = duration
     if (trackInfo && musicInfo) {
       delayUpdateMusicInfo(musicInfo, lyric)
@@ -158,6 +166,10 @@ const handlePlayMusic = async(musicInfo: LX.Player.PlayMusic, url: string, time:
       // if (startupAutoPlay) store.dispatch(playerAction.playMusic())
       } else {
         await TrackPlayer.play()
+        if (Platform.OS == 'ios') {
+          global.app_event.playerPlaying()
+          global.app_event.play()
+        }
       }
     }
   } else {
@@ -165,7 +177,33 @@ const handlePlayMusic = async(musicInfo: LX.Player.PlayMusic, url: string, time:
     if (!isTempTrack(track.id as string)) {
       await TrackPlayer.seekTo(time)
       await TrackPlayer.play()
+      if (Platform.OS == 'ios') {
+        global.app_event.playerPlaying()
+        global.app_event.play()
+      }
     }
+  }
+
+  const syncDuration = async() => {
+    const duration = await getDuration()
+    if (duration <= 0) return false
+    state.prevDuration = duration
+    setMaxplayTime(duration)
+    if ('source' in musicInfo && !musicInfo.interval && playerState.playMusicInfo.listId) {
+      void updateListMusics([{
+        id: playerState.playMusicInfo.listId,
+        musicInfo: {
+          ...musicInfo,
+          interval: formatPlayTime2(duration),
+        },
+      }])
+    }
+    return true
+  }
+  if (!await syncDuration()) {
+    void BackgroundTimer.setTimeout(() => {
+      void syncDuration()
+    }, 800)
   }
 
   if (queue.length > 2) {
@@ -186,7 +224,6 @@ export const playMusic = (musicInfo: LX.Player.PlayMusic, url: string, time: num
 // let duration = 0
 let prevArtwork: string | undefined
 const updateMetaInfo = async(mInfo: LX.Player.MusicInfo, lyric?: string) => {
-  console.log('updateMetaInfo', lyric)
   const isShowNotificationImage = settingState.setting['player.isShowNotificationImage']
   // const mInfo = formatMusicInfo(musicInfo)
   // console.log('+++++updateMusicPic+++++', track.artwork, track.duration)
@@ -212,13 +249,14 @@ const updateMetaInfo = async(mInfo: LX.Player.MusicInfo, lyric?: string) => {
     name = lyric
     singer = `${mInfo.name}${mInfo.singer ? ` - ${mInfo.singer}` : ''}`
   }
-  await TrackPlayer.updateNowPlayingMetadata({
+  await updateNowPlayingMetadata({
     title: name,
     artist: singer,
     album: mInfo.album ?? undefined,
     artwork,
     duration: state.prevDuration || 0,
-  }, state.isPlaying)
+    elapsedTime: state.isPlaying ? playerState.progress.nowPlayTime : undefined,
+  })
 }
 
 

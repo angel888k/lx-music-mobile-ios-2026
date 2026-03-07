@@ -3,7 +3,7 @@ import icoMoonConfig from '@/resources/fonts/selection.json'
 import { scaleSizeW } from '@/utils/pixelRatio'
 import { memo, type ComponentProps } from 'react'
 import { useTextShadow, useTheme } from '@/store/theme/hook'
-import { StyleSheet, type StyleProp, type TextStyle } from 'react-native'
+import { Platform, StyleSheet, type StyleProp, type TextStyle } from 'react-native'
 
 // import IconAntDesign from 'react-native-vector-icons/AntDesign'
 // import IconEntypo from 'react-native-vector-icons/Entypo'
@@ -21,7 +21,12 @@ import { StyleSheet, type StyleProp, type TextStyle } from 'react-native'
 // import IconSimpleLineIcons from 'react-native-vector-icons/SimpleLineIcons'
 
 
-const IcoMoon = createIconSetFromIcoMoon(icoMoonConfig)
+const iconFontFamily =
+  icoMoonConfig?.preferences?.fontPref?.metadata?.fontFamily
+  ?? icoMoonConfig?.metadata?.name
+  ?? 'icomoon'
+const IcoMoon = createIconSetFromIcoMoon(icoMoonConfig, iconFontFamily, `${iconFontFamily}.ttf`)
+if (Platform.OS != 'ios') void IcoMoon.loadFont()
 
 
 // https://oblador.github.io/react-native-vector-icons/
@@ -41,12 +46,13 @@ export const Icon = memo(({ size = 15, rawSize, color, style, ...props }: IconPr
     textShadowOffset: { width: 0.2, height: 0.2 },
     textShadowRadius: 2,
   }, style) : style
+  const iconStyle = StyleSheet.compose(newStyle, { fontFamily: iconFontFamily })
   return (
     <IcoMoon
       size={rawSize ?? scaleSizeW(size)}
       color={color ?? theme['c-font']}
       // @ts-expect-error
-      style={newStyle}
+      style={iconStyle}
       {...props}
     />
   )

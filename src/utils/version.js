@@ -119,5 +119,6 @@ export const downloadNewVersion = async(version, onDownload = noop) => {
 
 export const updateApp = async() => {
   if (!apkSavePath) throw new Error('apk Save Path is null')
-  await installApk(apkSavePath, APP_PROVIDER_NAME)
+  const installed = await installApk(apkSavePath, APP_PROVIDER_NAME)
+  if (installed === false) throw new Error('install apk is not available on current platform')
 }

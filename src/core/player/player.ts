@@ -28,6 +28,7 @@ import { checkIgnoringBatteryOptimization, checkNotificationPermission, debounce
 import { LIST_IDS } from '@/config/constant'
 import { addListMusics, removeListMusics } from '@/core/list'
 import { addDislikeInfo } from '@/core/dislikeList'
+import { Platform } from 'react-native'
 
 // import { checkMusicFileAvailable } from '@renderer/utils/music'
 
@@ -68,7 +69,7 @@ const createGettingUrlId = (musicInfo: LX.Music.MusicInfo | LX.Download.ListItem
  */
 const diffCurrentMusicInfo = (curMusicInfo: LX.Music.MusicInfo | LX.Download.ListItem): boolean => {
   // return curMusicInfo !== playerState.playMusicInfo.musicInfo || playerState.isPlay
-  return createGettingUrlId(curMusicInfo) != global.lx.gettingUrlId || curMusicInfo.id != playerState.playMusicInfo.musicInfo?.id || playerState.isPlay
+  return createGettingUrlId(curMusicInfo) != global.lx.gettingUrlId || curMusicInfo.id != playerState.playMusicInfo.musicInfo?.id || (Platform.OS != 'ios' && playerState.isPlay)
 }
 
 let cancelDelayRetry: (() => void) | null = null
@@ -111,6 +112,11 @@ const getMusicPlayUrl = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListIt
       isRefresh,
       onToggleSource(mInfo) {
         if (diffCurrentMusicInfo(musicInfo)) return
+        if (mInfo) {
+          const currentInfo = 'progress' in musicInfo ? musicInfo.metadata.musicInfo : musicInfo
+          currentInfo.meta.toggleMusicInfo = mInfo
+          global.lx.gettingUrlId = createGettingUrlId(musicInfo)
+        }
         setStatusText(global.i18n.t('toggle_source_try'))
       },
     })
@@ -139,8 +145,10 @@ export const setMusicUrl = (musicInfo: LX.Music.MusicInfo | LX.Download.ListItem
   global.lx.gettingUrlId = createGettingUrlId(musicInfo)
   void getMusicPlayUrl(musicInfo, isRefresh).then((url) => {
     if (!url) return
+    setStatusText('')
     setResource(musicInfo, url, playerState.progress.nowPlayTime)
   }).catch((err: any) => {
+    global.lx.isPlayerPreparing = false
     console.log(err)
     setStatusText(err.message as string)
     global.app_event.error()
@@ -238,6 +246,9 @@ const handlePlay = async() => {
       isEnableAudioOffload: settingState.setting['player.isEnableAudioOffload'],
     })
   }
+  if (global.lx.playerStatus.isIniting) {
+    return
+  }
 
   global.lx.isPlayedStop &&= false
   resetRandomNextMusicInfo()
@@ -253,6 +264,7 @@ const handlePlay = async() => {
 
   if (!musicInfo) return
 
+  global.lx.isPlayerPreparing = true
   await setStop()
   global.app_event.pause()
 
@@ -296,6 +308,7 @@ export const playList = async(listId: string, index: number) => {
 }
 
 const handleToggleStop = async() => {
+  global.lx.isPlayerPreparing = false
   await stop()
   setTimeout(() => {
     setPlayMusicInfo(null, null)
@@ -665,4 +678,3 @@ export const dislikeMusic = async() => {
   await addDislikeInfo([{ name: minfo.name, singer: minfo.singer }])
   await playNext(true)
 }
-

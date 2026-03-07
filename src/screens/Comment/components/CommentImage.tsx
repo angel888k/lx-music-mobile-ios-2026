@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { TouchableOpacity, View } from 'react-native'
+import { Platform, TouchableOpacity, View } from 'react-native'
 import Image, { getSize } from '@/components/common/Image'
 import { createStyle } from '@/utils/tools'
 import Text from '@/components/common/Text'
@@ -8,6 +8,7 @@ import { BorderWidths } from '@/theme'
 import { useTheme } from '@/store/theme/hook'
 
 const MAX_IMAGE_HEIGHT = scaleSizeH(260)
+const dashedBorderStyle = Platform.OS == 'ios' ? 'solid' : 'dashed'
 
 
 export default ({ url, maxWidth }: { url: string, maxWidth: number }) => {
@@ -67,6 +68,6 @@ const styles = createStyle({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: BorderWidths.normal,
-    borderStyle: 'dashed',
+    borderStyle: dashedBorderStyle,
   },
 })

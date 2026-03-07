@@ -1,4 +1,4 @@
-import TrackPlayer from 'react-native-track-player'
+import TrackPlayer, { IOSCategory, IOSCategoryOptions } from 'react-native-track-player'
 import { updateOptions, setVolume, setPlaybackRate, migratePlayerCache } from './utils'
 
 // const listenEvent = () => {
@@ -25,21 +25,28 @@ const initial = async({ volume, playRate, cacheSize, isHandleAudioFocus, isEnabl
 }) => {
   if (global.lx.playerStatus.isIniting || global.lx.playerStatus.isInitialized) return
   global.lx.playerStatus.isIniting = true
-  console.log('Cache Size', cacheSize * 1024)
   await migratePlayerCache()
-  await TrackPlayer.setupPlayer({
-    maxCacheSize: cacheSize * 1024,
-    maxBuffer: 1000,
-    waitForBuffer: true,
-    handleAudioFocus: isHandleAudioFocus,
-    audioOffload: isEnableAudioOffload,
-    autoUpdateMetadata: false,
-  })
-  global.lx.playerStatus.isInitialized = true
-  global.lx.playerStatus.isIniting = false
-  await updateOptions()
-  await setVolume(volume)
-  await setPlaybackRate(playRate)
+  try {
+    await TrackPlayer.setupPlayer({
+      maxCacheSize: cacheSize * 1024,
+      maxBuffer: 1000,
+      waitForBuffer: true,
+      handleAudioFocus: isHandleAudioFocus,
+      audioOffload: isEnableAudioOffload,
+      iosCategory: IOSCategory.Playback,
+      iosCategoryOptions: [
+        IOSCategoryOptions.AllowAirPlay,
+        IOSCategoryOptions.AllowBluetoothA2DP,
+      ],
+      autoUpdateMetadata: true,
+    })
+    global.lx.playerStatus.isInitialized = true
+    await updateOptions()
+    await setVolume(volume)
+    await setPlaybackRate(playRate)
+  } finally {
+    global.lx.playerStatus.isIniting = false
+  }
   // listenEvent()
 }
 

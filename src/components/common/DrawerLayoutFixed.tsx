@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react'
-import { DrawerLayoutAndroid, type DrawerLayoutAndroidProps, View, type LayoutChangeEvent } from 'react-native'
+import { DrawerLayoutAndroid, type DrawerLayoutAndroidProps, View, type LayoutChangeEvent, Platform, TouchableWithoutFeedback, Dimensions } from 'react-native'
 // import { getWindowSise } from '@/utils/tools'
 import { usePageVisible } from '@/store/common/hook'
 import { type COMPONENT_IDS } from '@/config/constant'
@@ -19,15 +19,23 @@ export interface DrawerLayoutFixedType {
 const DrawerLayoutFixed = forwardRef<DrawerLayoutFixedType, Props>(({ visibleNavNames, widthPercentage, widthPercentageMax, children, ...props }, ref) => {
   const drawerLayoutRef = useRef<DrawerLayoutAndroid>(null)
   const [w, setW] = useState<number | `${number}%`>('100%')
-  const [drawerWidth, setDrawerWidth] = useState(0)
+  const [drawerWidth, setDrawerWidth] = useState(() => {
+    const width = Dimensions.get('window').width
+    const wp = Math.floor(width * widthPercentage)
+    return widthPercentageMax ? Math.min(wp, widthPercentageMax) : wp
+  })
+  const [iosDrawerVisible, setIosDrawerVisible] = useState(false)
   const changedRef = useRef({ width: 0, changed: false })
+  const isAndroid = Platform.OS == 'android'
+  const isLeft = props.drawerPosition != 'right'
 
   const fixDrawerWidth = useCallback(() => {
+    if (!isAndroid) return
     if (!changedRef.current.width) return
     changedRef.current.changed = true
     // console.log('usePageVisible', visible, changedRef.current.width)
     setW(changedRef.current.width - 1)
-  }, [])
+  }, [isAndroid])
 
   // 修复 DrawerLayoutAndroid 在导航到其他屏幕再返回后无法打开的问题
   usePageVisible(visibleNavNames, useCallback((visible) => {
@@ -37,38 +45,81 @@ const DrawerLayoutFixed = forwardRef<DrawerLayoutFixedType, Props>(({ visibleNav
 
   useImperativeHandle(ref, () => ({
     openDrawer() {
-      drawerLayoutRef.current?.openDrawer()
+      if (isAndroid) {
+        drawerLayoutRef.current?.openDrawer()
+        return
+      }
+      setIosDrawerVisible(true)
     },
     closeDrawer() {
-      drawerLayoutRef.current?.closeDrawer()
+      if (isAndroid) {
+        drawerLayoutRef.current?.closeDrawer()
+        return
+      }
+      setIosDrawerVisible(false)
     },
     fixWidth() {
       fixDrawerWidth()
     },
-  }), [fixDrawerWidth])
+  }), [fixDrawerWidth, isAndroid])
 
 
   const handleLayout = useCallback((e: LayoutChangeEvent) => {
-    // console.log('handleLayout', e.nativeEvent.layout.width, changedRef.current.width)
+    const width = e.nativeEvent.layout.width
+    if (changedRef.current.width != width) {
+      changedRef.current.width = width
+      const wp = Math.floor(width * widthPercentage)
+      setDrawerWidth(widthPercentageMax ? Math.min(wp, widthPercentageMax) : wp)
+    }
+    if (!isAndroid) return
     if (changedRef.current.changed) {
-      // setW(e.nativeEvent.layout.width - 1)
       setW('100%')
       changedRef.current.changed = false
-    } else {
-      const width = e.nativeEvent.layout.width
-      if (changedRef.current.width == width) return
-      changedRef.current.width = width
-
-      // 重新设置面板宽度
-      const wp = Math.floor(width * widthPercentage)
-      // console.log(wp, widthPercentageMax)
-      setDrawerWidth(widthPercentageMax ? Math.min(wp, widthPercentageMax) : wp)
-
-      // 强制触发渲染以应用更改
-      changedRef.current.changed = true
-      setW(width - 1)
+      return
     }
-  }, [widthPercentage, widthPercentageMax])
+    changedRef.current.changed = true
+    setW(width - 1)
+  }, [widthPercentage, widthPercentageMax, isAndroid])
+
+  if (!isAndroid) {
+    return (
+      <View style={{ width: '100%', flex: 1 }} onLayout={handleLayout}>
+        {children}
+        <View
+          pointerEvents={iosDrawerVisible ? 'auto' : 'none'}
+          style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+          }}
+        >
+          <TouchableWithoutFeedback onPress={() => { setIosDrawerVisible(false) }}>
+            <View style={{ flex: 1, backgroundColor: iosDrawerVisible ? 'rgba(0, 0, 0, 0.35)' : 'transparent' }}>
+              <TouchableWithoutFeedback>
+                <View
+                  style={{
+                    width: drawerWidth,
+                    height: '100%',
+                    backgroundColor: props.drawerBackgroundColor ?? 'white',
+                    marginLeft: isLeft ? 0 : undefined,
+                    marginRight: isLeft ? undefined : 0,
+                    alignSelf: isLeft ? 'flex-start' : 'flex-end',
+                    transform: [{ translateX: iosDrawerVisible ? 0 : (isLeft ? -drawerWidth : drawerWidth) }],
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    {props.renderNavigationView?.()}
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </View>
+    )
+  }
 
   return (
     <View

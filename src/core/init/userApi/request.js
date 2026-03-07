@@ -5,6 +5,18 @@ import BackgroundTimer from 'react-native-background-timer'
 const defaultHeaders = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36',
 }
+
+const normalizeUrl = (url) => {
+  try {
+    const parsed = new URL(url)
+    parsed.pathname = parsed.pathname.replace(/\/\/+/g, '/')
+    return parsed.toString()
+  } catch {
+    const [protocol, ...rest] = url.split('://')
+    if (!rest.length) return url.replace(/\/\/+/g, '/')
+    return `${protocol}://${rest.join('://').replace(/\/\/+/g, '/')}`
+  }
+}
 // var proxyUrl = "http://" + user + ":" + password + "@" + host + ":" + port;
 // var proxiedRequest = request.defaults({'proxy': proxyUrl});
 
@@ -72,6 +84,7 @@ const blobToBuffer = (blob) => {
 }
 
 export const fetchData = (url, { timeout = 13_000, ...options }) => {
+  url = normalizeUrl(url)
   // console.log('---start---', url)
 
   const controller = new global.AbortController()

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import TrackPlayer, { State as TPState, Event as TPEvent } from 'react-native-track-player'
+import { Platform } from 'react-native'
 // import { store } from '@/store'
 // import { action as playerAction, STATUS } from '@/store/modules/player'
 import { isTempId, isEmpty } from './utils'
@@ -7,6 +8,7 @@ import { isTempId, isEmpty } from './utils'
 import { exitApp } from '@/core/common'
 import { getCurrentTrackId } from './playList'
 import { pause, play, playNext, playPrev } from '@/core/player/player'
+import playerState from '@/store/player/state'
 
 let isInitialized = false
 
@@ -27,7 +29,6 @@ const handleExitApp = async(reason: string) => {
 const registerPlaybackService = async() => {
   if (isInitialized) return
 
-  console.log('reg services...')
   TrackPlayer.addEventListener(TPEvent.RemotePlay, () => {
     // console.log('remote-play')
     play()
@@ -67,6 +68,7 @@ const registerPlaybackService = async() => {
   // })
 
   TrackPlayer.addEventListener(TPEvent.PlaybackError, async(err: any) => {
+    global.lx.isPlayerPreparing = false
     console.log('playback-error', err)
     global.app_event.error()
     global.app_event.playerError()
@@ -85,12 +87,19 @@ const registerPlaybackService = async() => {
         // console.log('state', 'State.NONE')
         break
       case TPState.Ready:
+        global.lx.isPlayerPreparing = false
+        if (Platform.OS == 'ios') {
+          global.app_event.playerPlaying()
+          global.app_event.play()
+        }
+        break
       case TPState.Stopped:
       case TPState.Paused:
         global.app_event.playerPause()
         global.app_event.pause()
         break
       case TPState.Playing:
+        global.lx.isPlayerPreparing = false
         global.app_event.playerPlaying()
         global.app_event.play()
         break
@@ -110,19 +119,67 @@ const registerPlaybackService = async() => {
     // console.log('currentIsPlaying', currentIsPlaying, global.lx.playInfo.isPlaying)
     // void updateMetaData(global.lx.store_playMusicInfo.musicInfo, currentIsPlaying)
   })
+  TrackPlayer.addEventListener(TPEvent.PlaybackQueueEnded, async() => {
+    if (Platform.OS != 'ios') return
+    global.lx.playerTrackId = ''
+    global.lx.isPlayerPreparing = false
+    if (global.lx.isPlayedStop) return handleExitApp('Timeout Exit')
+    await TrackPlayer.pause().catch(() => {})
+    global.app_event.playerPause()
+    global.app_event.pause()
+    global.app_event.playerEnded()
+    global.app_event.playerEmptied()
+  })
   TrackPlayer.addEventListener(TPEvent.PlaybackTrackChanged, async info => {
-    // console.log('PlaybackTrackChanged====>', info)
-    global.lx.playerTrackId = await getCurrentTrackId()
-    if (info.track == null) return
+    if (Platform.OS != 'ios') {
+      global.lx.playerTrackId = await getCurrentTrackId()
+      if (info.track == null) return
+      if (global.lx.isPlayedStop) return handleExitApp('Timeout Exit')
+
+      if (isEmpty()) {
+        await TrackPlayer.pause().catch(() => {})
+        global.app_event.playerPause()
+        global.app_event.pause()
+        global.app_event.playerEnded()
+        global.app_event.playerEmptied()
+      }
+      return
+    }
+
+    // iOS 在切歌过程中 getCurrentTrack() 的时机不稳定，直接读当前索引容易把临时状态误判成播放结束
+    if (info.nextTrack == null) return
     if (global.lx.isPlayedStop) return handleExitApp('Timeout Exit')
 
+    const queue = await TrackPlayer.getQueue() as LX.Player.Track[]
+    const nextTrack = queue[info.nextTrack]
+
+    if (!nextTrack) {
+      global.lx.isPlayerPreparing = false
+      return
+    }
+
+    const nextTrackId = String(nextTrack.id ?? '')
+
+    if (!isEmpty(nextTrackId)) {
+      global.lx.playerTrackId = nextTrackId
+      global.lx.isPlayerPreparing = false
+      return
+    }
+
+    const { nowPlayTime, maxPlayTime } = playerState.progress
+    if (global.lx.isPlayerPreparing || (maxPlayTime > 3 && nowPlayTime + 2 < maxPlayTime)) {
+      return
+    }
+
+    global.lx.playerTrackId = nextTrackId
+
     // console.log('global.lx.playerTrackId====>', global.lx.playerTrackId)
-    if (isEmpty()) {
+    if (isEmpty(nextTrackId)) {
       // console.log('====TEMP PAUSE====')
-      await TrackPlayer.pause()
+      await TrackPlayer.pause().catch(() => {})
       global.app_event.playerPause()
       global.app_event.pause()
-      global.app_event.playerEnded()
+      if (!global.lx.isPlayerPreparing) global.app_event.playerEnded()
       global.app_event.playerEmptied()
       // if (retryTrack) {
       //   if (retryTrack.musicId == retryGetUrlId) {
@@ -208,7 +265,6 @@ const registerPlaybackService = async() => {
 
 export default () => {
   if (global.lx.playerStatus.isRegisteredService) return
-  console.log('handle registerPlaybackService...')
   TrackPlayer.registerPlaybackService(() => registerPlaybackService)
   global.lx.playerStatus.isRegisteredService = true
 }

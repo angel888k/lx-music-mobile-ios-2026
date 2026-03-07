@@ -1,6 +1,6 @@
 import { TouchableOpacity } from 'react-native'
 import { Icon } from '@/components/common/Icon'
-import { createStyle } from '@/utils/tools'
+import { createStyle, iosIconButtonShadowReset } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import { scaleSizeW } from '@/utils/pixelRatio'
 
@@ -15,7 +15,7 @@ export default ({ icon, color, onPress, onLongPress }: {
 }) => {
   const theme = useTheme()
   return (
-    <TouchableOpacity style={{ ...styles.cotrolBtn, width: BTN_WIDTH, height: BTN_WIDTH }} activeOpacity={0.5} onPress={onPress} onLongPress={onLongPress}>
+    <TouchableOpacity style={{ ...styles.cotrolBtn, ...iosIconButtonShadowReset, width: BTN_WIDTH, height: BTN_WIDTH }} activeOpacity={0.5} onPress={onPress} onLongPress={onLongPress}>
       <Icon name={icon} color={color ?? theme['c-font-label']} size={BTN_ICON_SIZE} />
     </TouchableOpacity>
   )
@@ -26,9 +26,5 @@ const styles = createStyle({
     marginLeft: 5,
     justifyContent: 'center',
     alignItems: 'center',
-
-    // backgroundColor: '#ccc',
-    shadowOpacity: 1,
-    textShadowRadius: 1,
   },
 })

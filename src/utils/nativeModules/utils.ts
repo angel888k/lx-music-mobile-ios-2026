@@ -1,33 +1,57 @@
-import { AppState, NativeEventEmitter, NativeModules } from 'react-native'
+import { AppState, Dimensions, NativeEventEmitter, NativeModules } from 'react-native'
 
-const { UtilsModule } = NativeModules
+type UtilsNativeModule = Record<string, ((...args: unknown[]) => unknown) | undefined>
 
-export const exitApp = UtilsModule.exitApp
+const UtilsModule = NativeModules.UtilsModule as undefined | UtilsNativeModule
 
-export const getSupportedAbis = UtilsModule.getSupportedAbis
+const callUtils = <T>(method: string, fallback: T, ...args: unknown[]): T => {
+  const handler = UtilsModule?.[method]
+  if (typeof handler == 'function') return handler(...args) as T
+  return fallback
+}
 
-export const installApk = (filePath: string, fileProviderAuthority: string) => UtilsModule.installApk(filePath, fileProviderAuthority)
+const getFallbackWindowSize = () => {
+  const { width, height, scale } = Dimensions.get('window')
+  return {
+    width: Math.round(width * scale),
+    height: Math.round(height * scale),
+  }
+}
 
+export const exitApp = () => {
+  callUtils('exitApp', undefined)
+}
+
+export const getSupportedAbis = async(): Promise<string[]> => {
+  return callUtils('getSupportedAbis', Promise.resolve([]))
+}
+
+export const installApk = async(filePath: string, fileProviderAuthority: string) => {
+  return callUtils('installApk', Promise.resolve(false), filePath, fileProviderAuthority)
+}
 
 export const screenkeepAwake = () => {
   if (global.lx.isScreenKeepAwake) return
   global.lx.isScreenKeepAwake = true
-  UtilsModule.screenkeepAwake()
+  callUtils('screenkeepAwake', undefined)
 }
 export const screenUnkeepAwake = () => {
-  // console.log('screenUnkeepAwake')
   if (!global.lx.isScreenKeepAwake) return
   global.lx.isScreenKeepAwake = false
-  UtilsModule.screenUnkeepAwake()
+  callUtils('screenUnkeepAwake', undefined)
 }
 
-export const getWIFIIPV4Address = UtilsModule.getWIFIIPV4Address as () => Promise<string>
+export const getWIFIIPV4Address = async(): Promise<string> => {
+  return callUtils('getWIFIIPV4Address', Promise.resolve(''))
+}
 
 export const getDeviceName = async(): Promise<string> => {
-  return UtilsModule.getDeviceName().then((deviceName: string) => deviceName || 'Unknown')
+  return callUtils('getDeviceName', Promise.resolve('Unknown')).then((deviceName: string) => deviceName || 'Unknown')
 }
 
-export const isNotificationsEnabled = UtilsModule.isNotificationsEnabled as () => Promise<boolean>
+export const isNotificationsEnabled = async(): Promise<boolean> => {
+  return callUtils('isNotificationsEnabled', Promise.resolve(false))
+}
 
 export const requestNotificationPermission = async() => new Promise<boolean>((resolve) => {
   let subscription = AppState.addEventListener('change', (state) => {
@@ -37,7 +61,7 @@ export const requestNotificationPermission = async() => new Promise<boolean>((re
       void isNotificationsEnabled().then(resolve)
     }, 1000)
   })
-  UtilsModule.openNotificationPermissionActivity().then((result: boolean) => {
+  void callUtils('openNotificationPermissionActivity', Promise.resolve(false)).then((result: boolean) => {
     if (result) return
     subscription.remove()
     resolve(false)
@@ -45,16 +69,16 @@ export const requestNotificationPermission = async() => new Promise<boolean>((re
 })
 
 export const shareText = async(shareTitle: string, title: string, text: string): Promise<void> => {
-  UtilsModule.shareText(shareTitle, title, text)
+  callUtils('shareText', undefined, shareTitle, title, text)
 }
 
 export const getSystemLocales = async(): Promise<string> => {
-  return UtilsModule.getSystemLocales()
+  return callUtils('getSystemLocales', Promise.resolve(Intl.DateTimeFormat().resolvedOptions().locale.toLowerCase()))
 }
 
 export const onScreenStateChange = (handler: (state: 'ON' | 'OFF') => void): () => void => {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-  const eventEmitter = new NativeEventEmitter(UtilsModule)
+  if (!UtilsModule) return () => {}
+  const eventEmitter = new NativeEventEmitter()
   const eventListener = eventEmitter.addListener('screen-state', event => {
     handler(event.state as 'ON' | 'OFF')
   })
@@ -65,13 +89,13 @@ export const onScreenStateChange = (handler: (state: 'ON' | 'OFF') => void): () 
 }
 
 export const getWindowSize = async(): Promise<{ width: number, height: number }> => {
-  return UtilsModule.getWindowSize()
+  return callUtils('getWindowSize', Promise.resolve(getFallbackWindowSize()))
 }
 
 export const onWindowSizeChange = (handler: (size: { width: number, height: number }) => void): () => void => {
-  UtilsModule.listenWindowSizeChanged()
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-  const eventEmitter = new NativeEventEmitter(UtilsModule)
+  if (!UtilsModule) return () => {}
+  callUtils('listenWindowSizeChanged', undefined)
+  const eventEmitter = new NativeEventEmitter()
   const eventListener = eventEmitter.addListener('screen-size-changed', event => {
     handler(event as { width: number, height: number })
   })
@@ -82,7 +106,7 @@ export const onWindowSizeChange = (handler: (size: { width: number, height: numb
 }
 
 export const isIgnoringBatteryOptimization = async(): Promise<boolean> => {
-  return UtilsModule.isIgnoringBatteryOptimization()
+  return callUtils('isIgnoringBatteryOptimization', Promise.resolve(false))
 }
 
 export const requestIgnoreBatteryOptimization = async() => new Promise<boolean>((resolve) => {
@@ -93,7 +117,7 @@ export const requestIgnoreBatteryOptimization = async() => new Promise<boolean>(
       void isIgnoringBatteryOptimization().then(resolve)
     }, 1000)
   })
-  UtilsModule.requestIgnoreBatteryOptimization().then((result: boolean) => {
+  void callUtils('requestIgnoreBatteryOptimization', Promise.resolve(false)).then((result: boolean) => {
     if (result) return
     subscription.remove()
     resolve(false)

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ScrollView, TouchableOpacity, View } from 'react-native'
+import { Platform, ScrollView, TouchableOpacity, View } from 'react-native'
 
 import Text from '@/components/common/Text'
 import { useMyList } from '@/store/list/hook'
@@ -23,6 +23,7 @@ const styles = createStyle({
 })
 const MIN_WIDTH = scaleSizeW(140)
 const PADDING = styles.list.paddingLeft + styles.list.paddingRight
+const dashedBorderStyle = Platform.OS == 'ios' ? 'solid' : 'dashed'
 
 const EditListItem = ({ itemWidth }: {
   itemWidth: number
@@ -34,7 +35,7 @@ const EditListItem = ({ itemWidth }: {
   return (
     <View style={{ ...listStyles.listItem, width: itemWidth }}>
       <TouchableOpacity
-        style={{ ...listStyles.button, borderColor: theme['c-primary-light-200-alpha-700'], borderStyle: 'dashed' }}
+        style={{ ...listStyles.button, borderColor: theme['c-primary-light-200-alpha-700'], borderStyle: dashedBorderStyle }}
         onPress={() => { setEdit(true) }}
       >
         <Text style={{ opacity: isEdit ? 0 : 1 }} numberOfLines={1} size={14} color={theme['c-button-font']}>{t('list_create')}</Text>

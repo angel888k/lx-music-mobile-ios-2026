@@ -167,7 +167,9 @@ const VersionModal = ({ componentId }: { componentId: string }) => {
     if (versionInfo.isLatest || versionInfo.isUnknown) {
       void checkUpdate()
     } else if (versionInfo.status == 'downloaded') {
-      void updateApp()
+      void updateApp().catch(() => {
+        void checkUpdate()
+      })
     } else if (versionInfo.status == 'idle' || versionInfo.status == 'error') {
       downloadUpdate()
     }

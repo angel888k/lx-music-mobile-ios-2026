@@ -6,6 +6,7 @@ import { toast } from '@/utils/tools'
 
 import { useI18n } from '@/lang'
 import { checkDesktopLyricOverlayPermission, hideDesktopLyric, openDesktopLyricOverlayPermissionActivity, showDesktopLyric } from '@/core/desktopLyric'
+import { isDesktopLyricModuleAvailable } from '@/utils/nativeModules/lyricDesktop'
 import { updateSetting } from '@/core/common'
 
 export interface DesktopLyricEnableType {
@@ -35,16 +36,19 @@ export default forwardRef<DesktopLyricEnableType, {}>((props, ref) => {
   }
   const handleChangeEnableDesktopLyric = async(isEnable: boolean) => {
     if (isEnable) {
+      if (!isDesktopLyricModuleAvailable) {
+        updateSetting({ 'desktopLyric.enable': false })
+        toast('当前系统暂不支持桌面歌词', 'long')
+        return
+      }
       try {
         await checkDesktopLyricOverlayPermission()
         await showDesktopLyric()
       } catch (err) {
         console.log(err)
         handleShowModal()
-        // return false
       }
     } else await hideDesktopLyric()
-    // return true
     updateSetting({ 'desktopLyric.enable': isEnable })
   }
 

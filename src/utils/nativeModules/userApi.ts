@@ -1,19 +1,18 @@
 import { NativeEventEmitter, NativeModules } from 'react-native'
 
-const { UserApiModule } = NativeModules
+const UserApiModule = NativeModules.UserApiModule as undefined | {
+  loadScript: (info: LX.UserApi.UserApiInfo & { script: string }) => void
+  sendAction: (action: string, data: string) => void
+  destroy: () => void
+}
+
+export const isUserApiModuleAvailable = !!UserApiModule
 
 let loadScriptInfo: LX.UserApi.UserApiInfo | null = null
 export const loadScript = (info: LX.UserApi.UserApiInfo & { script: string }) => {
   loadScriptInfo = info
-  UserApiModule.loadScript({
-    id: info.id,
-    name: info.name,
-    description: info.description,
-    version: info.version ?? '',
-    author: info.author ?? '',
-    homepage: info.homepage ?? '',
-    script: info.script,
-  })
+  if (!UserApiModule?.loadScript) return
+  UserApiModule.loadScript(info)
 }
 
 export interface SendResponseParams {
@@ -31,10 +30,9 @@ export interface SendActions {
   response: SendResponseParams
 }
 export const sendAction = <T extends keyof SendActions>(action: T, data: SendActions[T]) => {
+  if (!UserApiModule?.sendAction) return
   UserApiModule.sendAction(action, JSON.stringify(data))
 }
-
-// export const clearAppCache = CacheModule.clearAppCache as () => Promise<void>
 
 export interface InitParams {
   status: boolean
@@ -77,8 +75,8 @@ export interface Actions {
 export type ActionsEvent = { [K in keyof Actions]: { action: K, data: Actions[K] } }[keyof Actions]
 
 export const onScriptAction = (handler: (event: ActionsEvent) => void): () => void => {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-  const eventEmitter = new NativeEventEmitter(UserApiModule)
+  if (!UserApiModule) return () => {}
+  const eventEmitter = new NativeEventEmitter(UserApiModule as never)
   const eventListener = eventEmitter.addListener('api-action', event => {
     if (event.data) event.data = JSON.parse(event.data as string)
     if (event.action == 'init') {
@@ -96,5 +94,5 @@ export const onScriptAction = (handler: (event: ActionsEvent) => void): () => vo
 }
 
 export const destroy = () => {
-  UserApiModule.destroy()
+  UserApiModule?.destroy?.()
 }

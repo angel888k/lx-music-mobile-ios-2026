@@ -63,6 +63,10 @@ buck-out/
 # Ruby / CocoaPods
 /ios/Pods/
 /vendor/bundle/
+/ios/*.xcworkspace/
+/ios/link-assets-manifest.json
+/android/link-assets-manifest.json
+/android/app/src/main/assets/custom/
 
 # testing
 /coverage

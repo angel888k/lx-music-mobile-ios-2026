@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
-import { type NativeScrollEvent, type NativeSyntheticEvent, View, TouchableOpacity, Animated } from 'react-native'
+import { type NativeScrollEvent, type NativeSyntheticEvent, View, TouchableOpacity, Animated, Platform } from 'react-native'
 import Text from '@/components/common/Text'
 import { createStyle } from '@/utils/tools'
 import { type Lines } from 'lrc-file-parser'
@@ -21,6 +21,7 @@ export interface PlayLineProps {
 }
 
 const ANIMATION_DURATION = 300
+const dashedBorderStyle = Platform.OS == 'ios' ? 'solid' : 'dashed'
 
 export default forwardRef<PlayLineType, PlayLineProps>(({ onPlayLine }, ref) => {
   const theme = useTheme()
@@ -125,7 +126,7 @@ const styles = createStyle({
   line: {
     marginLeft: 30,
     borderBottomWidth: BorderWidths.normal2,
-    borderStyle: 'dashed',
+    borderStyle: dashedBorderStyle,
     flex: 1,
   },
   button: {

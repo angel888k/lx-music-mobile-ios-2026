@@ -1,11 +1,21 @@
 import { NativeModules } from 'react-native'
 
-const { CryptoModule } = NativeModules
+const CryptoModule = NativeModules.CryptoModule as undefined | {
+  generateRsaKey: () => Promise<{ publicKey: string, privateKey: string }>
+  rsaEncrypt: (text: string, key: string, padding: RSA_PADDING) => Promise<string>
+  rsaDecrypt: (text: string, key: string, padding: RSA_PADDING) => Promise<string>
+  rsaEncryptSync: (text: string, key: string, padding: RSA_PADDING) => string
+  rsaDecryptSync: (text: string, key: string, padding: RSA_PADDING) => string
+  aesEncrypt: (text: string, key: string, vi: string, mode: AES_MODE) => Promise<string>
+  aesDecrypt: (text: string, key: string, vi: string, mode: AES_MODE) => Promise<string>
+  aesEncryptSync: (text: string, key: string, vi: string, mode: AES_MODE) => string
+  aesDecryptSync: (text: string, key: string, vi: string, mode: AES_MODE) => string
+}
 
-// export const testRsa = (text: string, key: string) => {
-//   // console.log(sourceFilePath, targetFilePath)
-//   return CryptoModule.testRsa()
-// }
+const getCryptoModule = () => {
+  if (!CryptoModule) throw new Error('CryptoModule is not available on current platform')
+  return CryptoModule
+}
 
 enum KEY_PREFIX {
   publicKeyStart = '-----BEGIN PUBLIC KEY-----',
@@ -25,8 +35,7 @@ export enum AES_MODE {
 }
 
 export const generateRsaKey = async() => {
-  // console.log(sourceFilePath, targetFilePath)
-  const key = await CryptoModule.generateRsaKey() as { publicKey: string, privateKey: string }
+  const key = await getCryptoModule().generateRsaKey() as { publicKey: string, privateKey: string }
   return {
     publicKey: `${KEY_PREFIX.publicKeyStart}\n${key.publicKey}${KEY_PREFIX.publicKeyEnd}`,
     privateKey: `${KEY_PREFIX.privateKeyStart}\n${key.privateKey}${KEY_PREFIX.privateKeyEnd}`,
@@ -34,32 +43,28 @@ export const generateRsaKey = async() => {
 }
 
 export const rsaEncrypt = async(text: string, key: string, padding: RSA_PADDING): Promise<string> => {
-  // console.log(sourceFilePath, targetFilePath)
-  return CryptoModule.rsaEncrypt(text, key
+  return getCryptoModule().rsaEncrypt(text, key
     .replace(KEY_PREFIX.publicKeyStart, '')
     .replace(KEY_PREFIX.publicKeyEnd, ''),
   padding)
 }
 
 export const rsaDecrypt = async(text: string, key: string, padding: RSA_PADDING): Promise<string> => {
-  // console.log(sourceFilePath, targetFilePath)
-  return CryptoModule.rsaDecrypt(text, key
+  return getCryptoModule().rsaDecrypt(text, key
     .replace(KEY_PREFIX.privateKeyStart, '')
     .replace(KEY_PREFIX.privateKeyEnd, ''),
   padding)
 }
 
 export const rsaEncryptSync = (text: string, key: string, padding: RSA_PADDING): string => {
-  // console.log(sourceFilePath, targetFilePath)
-  return CryptoModule.rsaEncryptSync(text, key
+  return getCryptoModule().rsaEncryptSync(text, key
     .replace(KEY_PREFIX.publicKeyStart, '')
     .replace(KEY_PREFIX.publicKeyEnd, ''),
   padding)
 }
 
 export const rsaDecryptSync = (text: string, key: string, padding: RSA_PADDING): string => {
-  // console.log(sourceFilePath, targetFilePath)
-  return CryptoModule.rsaDecryptSync(text, key
+  return getCryptoModule().rsaDecryptSync(text, key
     .replace(KEY_PREFIX.privateKeyStart, '')
     .replace(KEY_PREFIX.privateKeyEnd, ''),
   padding)
@@ -67,21 +72,17 @@ export const rsaDecryptSync = (text: string, key: string, padding: RSA_PADDING):
 
 
 export const aesEncrypt = async(text: string, key: string, vi: string, mode: AES_MODE): Promise<string> => {
-  // console.log(sourceFilePath, targetFilePath)
-  return CryptoModule.aesEncrypt(text, key, vi, mode)
+  return getCryptoModule().aesEncrypt(text, key, vi, mode)
 }
 
 export const aesDecrypt = async(text: string, key: string, vi: string, mode: AES_MODE): Promise<string> => {
-  // console.log(sourceFilePath, targetFilePath)
-  return CryptoModule.aesDecrypt(text, key, vi, mode)
+  return getCryptoModule().aesDecrypt(text, key, vi, mode)
 }
 
 export const aesEncryptSync = (text: string, key: string, vi: string, mode: AES_MODE): string => {
-  // console.log(sourceFilePath, targetFilePath)
-  return CryptoModule.aesEncryptSync(text, key, vi, mode)
+  return getCryptoModule().aesEncryptSync(text, key, vi, mode)
 }
 
 export const aesDecryptSync = (text: string, key: string, vi: string, mode: AES_MODE): string => {
-  // console.log(sourceFilePath, targetFilePath)
-  return CryptoModule.aesDecryptSync(text, key, vi, mode)
+  return getCryptoModule().aesDecryptSync(text, key, vi, mode)
 }

@@ -1,6 +1,6 @@
 import { memo, useCallback, useRef } from 'react'
 
-import { TouchableOpacity, View } from 'react-native'
+import { Platform, TouchableOpacity, View } from 'react-native'
 import { useTheme } from '@/store/theme/hook'
 import Text from '@/components/common/Text'
 import { createStyle } from '@/utils/tools'
@@ -15,6 +15,8 @@ export interface PicItemProps {
   onOnlineMatch: () => void
   onChanged: (text: string) => void
 }
+
+const dashedBorderStyle = Platform.OS == 'ios' ? 'solid' : 'dashed'
 
 export default memo(({ value, label, onOnlineMatch, onChanged }: PicItemProps) => {
   const theme = useTheme()
@@ -86,6 +88,6 @@ const styles = createStyle({
     width: 180,
     height: 180,
     borderWidth: BorderWidths.normal,
-    borderStyle: 'dashed',
+    borderStyle: dashedBorderStyle,
   },
 })

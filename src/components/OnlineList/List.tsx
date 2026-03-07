@@ -64,6 +64,7 @@ const List = forwardRef<ListType, ListProps>(({
   const isMultiSelectModeRef = useRef(false)
   const selectModeRef = useRef<SelectMode>('single')
   const prevSelectIndexRef = useRef(-1)
+  const lastPressRef = useRef<{ id: string, time: number }>({ id: '', time: 0 })
   const [selectedList, setSelectedList] = useState<LX.Music.MusicInfoOnline[]>([])
   const selectedListRef = useRef<LX.Music.MusicInfoOnline[]>([])
   const [visibleMultiSelect, setVisibleMultiSelect] = useState(false)
@@ -154,6 +155,9 @@ const List = forwardRef<ListType, ListProps>(({
   const handlePress = (item: LX.Music.MusicInfoOnline, index: number) => {
     requestAnimationFrame(() => {
       if (checkHomePagerIdle && !global.lx.homePagerIdle) return
+      const now = Date.now()
+      if (lastPressRef.current.id == item.id && now - lastPressRef.current.time < 400) return
+      lastPressRef.current = { id: item.id, time: now }
       if (isMultiSelectModeRef.current) {
         handleSelect(item, index)
       } else {

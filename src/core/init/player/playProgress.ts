@@ -4,11 +4,24 @@ import { setCurrentTime, getDuration, getPosition } from '@/plugins/player'
 import { formatPlayTime2 } from '@/utils/common'
 import { savePlayInfo } from '@/utils/data'
 import { throttleBackgroundTimer } from '@/utils/tools'
-import BackgroundTimer from 'react-native-background-timer'
 import playerState from '@/store/player/state'
 import settingState from '@/store/setting/state'
 import { onScreenStateChange } from '@/utils/nativeModules/utils'
-import { AppState } from 'react-native'
+import BackgroundTimer from 'react-native-background-timer'
+import { AppState, Platform } from 'react-native'
+
+const parseInterval = (interval?: string | null) => {
+  if (!interval) return 0
+  const parts = interval.split(':').map(part => parseInt(part, 10)).filter(num => !Number.isNaN(num))
+  if (!parts.length) return 0
+  let result = 0
+  let unit = 1
+  while (parts.length) {
+    result += parts.pop()! * unit
+    unit *= 60
+  }
+  return result
+}
 
 const delaySavePlayInfo = throttleBackgroundTimer(() => {
   void savePlayInfo({
@@ -22,16 +35,24 @@ const delaySavePlayInfo = throttleBackgroundTimer(() => {
 export default () => {
   // const updateMusicInfo = useCommit('list', 'updateMusicInfo')
 
-  let updateTimeout: number | null = null
+  let updateTimeout: ReturnType<typeof setInterval> | number | null = null
 
   let isScreenOn = true
 
   const getCurrentTime = () => {
     let id = playerState.musicInfo.id
     void getPosition().then(position => {
-      if (!position || id != playerState.musicInfo.id) return
+      if (position == null || id != playerState.musicInfo.id) return
       setNowPlayTime(position)
       if (!playerState.isPlay) return
+
+      if (!playerState.progress.maxPlayTime) {
+        const interval = playerState.playMusicInfo.musicInfo && 'source' in playerState.playMusicInfo.musicInfo
+          ? parseInterval(playerState.playMusicInfo.musicInfo.interval)
+          : 0
+        if (interval > 0) setMaxplayTime(interval)
+        else void getMaxTime()
+      }
 
       if (settingState.setting['player.isSavePlayTime'] && !playerState.playMusicInfo.isTempPlay && isScreenOn) {
         delaySavePlayInfo()
@@ -39,7 +60,10 @@ export default () => {
     })
   }
   const getMaxTime = async() => {
-    setMaxplayTime(await getDuration())
+    const duration = await getDuration()
+    if (duration > 0) setMaxplayTime(duration)
+    else if (playerState.progress.maxPlayTime > 0) return
+    else return
 
     if (playerState.playMusicInfo.musicInfo && 'source' in playerState.playMusicInfo.musicInfo && !playerState.playMusicInfo.musicInfo.interval) {
       // console.log(formatPlayTime2(playProgress.maxPlayTime))
@@ -58,13 +82,16 @@ export default () => {
 
   const clearUpdateTimeout = () => {
     if (!updateTimeout) return
-    BackgroundTimer.clearInterval(updateTimeout)
+    if (Platform.OS == 'ios') clearInterval(updateTimeout as ReturnType<typeof setInterval>)
+    else BackgroundTimer.clearInterval(updateTimeout as number)
     updateTimeout = null
   }
   const startUpdateTimeout = () => {
     if (!isScreenOn) return
     clearUpdateTimeout()
-    updateTimeout = BackgroundTimer.setInterval(() => {
+    updateTimeout = Platform.OS == 'ios' ? setInterval(() => {
+      getCurrentTime()
+    }, 1000 / settingState.setting['player.playbackRate']) : BackgroundTimer.setInterval(() => {
       getCurrentTime()
     }, 1000 / settingState.setting['player.playbackRate'])
     getCurrentTime()
@@ -117,6 +144,10 @@ export default () => {
     // void setCurrentTime(playerState.progress.nowPlayTime)
     // setMaxplayTime(playProgress.maxPlayTime)
     handlePause()
+    const interval = playerState.playMusicInfo.musicInfo && 'source' in playerState.playMusicInfo.musicInfo
+      ? parseInterval(playerState.playMusicInfo.musicInfo.interval)
+      : 0
+    if (interval > 0) setMaxplayTime(interval)
     if (!playerState.playMusicInfo.isTempPlay) {
       void savePlayInfo({
         time: playerState.progress.nowPlayTime,

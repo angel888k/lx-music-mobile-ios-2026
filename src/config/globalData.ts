@@ -40,6 +40,8 @@ global.lx = {
   // 是否播放完后退出应用
   isPlayedStop: false,
 
+  isPlayerPreparing: false,
+
   // prevListPlayIndex: -1,
 
   // syncKeyInfo: {},

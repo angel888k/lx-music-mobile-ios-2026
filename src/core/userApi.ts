@@ -1,10 +1,14 @@
 import { action, state } from '@/store/userApi'
 import { addUserApi, getUserApiScript, removeUserApi as removeUserApiFromStore, setUserApiAllowShowUpdateAlert as setUserApiAllowShowUpdateAlertFromStore } from '@/utils/data'
-import { destroy, loadScript } from '@/utils/nativeModules/userApi'
+import { destroy, isUserApiModuleAvailable, loadScript } from '@/utils/nativeModules/userApi'
 import { log as writeLog } from '@/utils/log'
 
 
 export const setUserApi = async(apiId: string) => {
+  if (!isUserApiModuleAvailable) {
+    setUserApiStatus(false, 'UserApiModule is not available on current platform')
+    throw new Error('UserApiModule is not available on current platform')
+  }
   global.lx.qualityList = {}
   setUserApiStatus(false, 'initing')
 
@@ -43,32 +47,25 @@ export const setUserApiAllowShowUpdateAlert = async(id: string, enable: boolean)
 }
 
 export const log = {
-  r_info(...params: any[]) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  r_info(...params: unknown[]) {
     writeLog.info(...params)
   },
-  r_warn(...params: any[]) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  r_warn(...params: unknown[]) {
     writeLog.warn(...params)
   },
-  r_error(...params: any[]) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  r_error(...params: unknown[]) {
     writeLog.error(...params)
   },
-  log(...params: any[]) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  log(...params: unknown[]) {
     if (global.lx.isEnableUserApiLog) writeLog.info(...params)
   },
-  info(...params: any[]) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  info(...params: unknown[]) {
     if (global.lx.isEnableUserApiLog) writeLog.info(...params)
   },
-  warn(...params: any[]) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  warn(...params: unknown[]) {
     if (global.lx.isEnableUserApiLog) writeLog.warn(...params)
   },
-  error(...params: any[]) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  error(...params: unknown[]) {
     if (global.lx.isEnableUserApiLog) writeLog.error(...params)
   },
 }

@@ -1,5 +1,6 @@
 #import "AppDelegate.h"
 #import <ReactNativeNavigation/ReactNativeNavigation.h>
+#import <AVFoundation/AVFoundation.h>
 
 #import <React/RCTBundleURLProvider.h>
 
@@ -7,6 +8,17 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
+  AVAudioSession *audioSession = [AVAudioSession sharedInstance];
+  if (@available(iOS 10.0, *)) {
+    [audioSession setCategory:AVAudioSessionCategoryPlayback
+                   withOptions:(AVAudioSessionCategoryOptionAllowBluetoothA2DP | AVAudioSessionCategoryOptionAllowAirPlay)
+                         error:nil];
+  } else {
+    [audioSession setCategory:AVAudioSessionCategoryPlayback error:nil];
+  }
+  [audioSession setActive:YES error:nil];
+  [application beginReceivingRemoteControlEvents];
+
   RCTBridge *bridge = [[RCTBridge alloc] initWithDelegate:self launchOptions:launchOptions];
   [ReactNativeNavigation bootstrapWithBridge:bridge];
   // You can add your custom initial props in the dictionary below.

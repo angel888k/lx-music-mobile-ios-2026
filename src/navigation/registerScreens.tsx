@@ -1,6 +1,7 @@
 // @flow
 
 import { Navigation } from 'react-native-navigation'
+import { Platform, SafeAreaView, View } from 'react-native'
 
 import {
   Home,
@@ -27,12 +28,15 @@ import SyncModeModal from './components/SyncModeModal'
 
 function WrappedComponent(Component: any) {
   return function inject(props: Record<string, any>) {
+    const RootView = Platform.OS == 'ios' ? SafeAreaView : View
     const EnhancedComponent = () => (
-      <Provider>
-        <Component
-          {...props}
-        />
-      </Provider>
+      <RootView style={{ flex: 1 }}>
+        <Provider>
+          <Component
+            {...props}
+          />
+        </Provider>
+      </RootView>
     )
 
     return <EnhancedComponent />
@@ -48,6 +52,4 @@ export default () => {
   Navigation.registerComponent(PACT_MODAL, () => WrappedComponent(PactModal))
   Navigation.registerComponent(SYNC_MODE_MODAL, () => WrappedComponent(SyncModeModal))
   // Navigation.registerComponent(SETTING_SCREEN, () => WrappedComponent(Setting))
-
-  console.info('All screens have been registered...')
 }

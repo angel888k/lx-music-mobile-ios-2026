@@ -1,4 +1,5 @@
 import TrackPlayer, { Capability, Event, RepeatMode, State } from 'react-native-track-player'
+import { NativeModules, Platform } from 'react-native'
 import BackgroundTimer from 'react-native-background-timer'
 import { playMusic as handlePlayMusic } from './playList'
 import { existsFile, moveFile, privateStorageDirectoryPath, temporaryDirectoryPath } from '@/utils/fs'
@@ -7,9 +8,16 @@ import { toast } from '@/utils/tools'
 
 
 export { useBufferProgress } from './hook'
+export { getDuration, getPosition } from './time'
+export { updateNowPlayingTitles } from './nowPlaying'
 
 const emptyIdRxp = /\/\/default$/
 const tempIdRxp = /\/\/default$|\/\/default\/\/restorePlay$/
+const nativeTrackPlayer = NativeModules.TrackPlayerModule as {
+  isCached?: (url: string) => Promise<boolean>
+  getCacheSize?: () => Promise<number>
+  clearCache?: () => Promise<void>
+}
 export const isEmpty = (trackId = global.lx.playerTrackId) => {
   // console.log(trackId)
   return !trackId || emptyIdRxp.test(trackId)
@@ -155,11 +163,8 @@ export const setResource = (musicInfo: LX.Player.PlayMusic, url: string, duratio
 }
 
 export const setPlay = async() => TrackPlayer.play()
-export const getPosition = async() => TrackPlayer.getPosition()
-export const getDuration = async() => TrackPlayer.getDuration()
 export const setStop = async() => {
   await TrackPlayer.stop()
-  if (!isEmpty()) await TrackPlayer.skipToNext()
 }
 export const setLoop = async(loop: boolean) => TrackPlayer.setRepeatMode(loop ? RepeatMode.Off : RepeatMode.Track)
 
@@ -168,16 +173,20 @@ export const setPause = async() => TrackPlayer.pause()
 export const setCurrentTime = async(time: number) => TrackPlayer.seekTo(time)
 export const setVolume = async(num: number) => TrackPlayer.setVolume(num)
 export const setPlaybackRate = async(num: number) => TrackPlayer.setRate(num)
-export const updateNowPlayingTitles = async(duration: number, title: string, artist: string, album: string) => {
-  console.log('set playing titles', duration, title, artist, album)
-  return TrackPlayer.updateNowPlayingTitles(duration, title, artist, album)
-}
-
 export const resetPlay = async() => Promise.all([setPause(), setCurrentTime(0)])
 
-export const isCached = async(url: string) => TrackPlayer.isCached(url)
-export const getCacheSize = async() => TrackPlayer.getCacheSize()
-export const clearCache = async() => TrackPlayer.clearCache()
+export const isCached = async(url: string) => {
+  if (Platform.OS == 'ios' && typeof nativeTrackPlayer.isCached != 'function') return false
+  return TrackPlayer.isCached(url)
+}
+export const getCacheSize = async() => {
+  if (Platform.OS == 'ios' && typeof nativeTrackPlayer.getCacheSize != 'function') return 0
+  return TrackPlayer.getCacheSize()
+}
+export const clearCache = async() => {
+  if (Platform.OS == 'ios' && typeof nativeTrackPlayer.clearCache != 'function') return
+  return TrackPlayer.clearCache()
+}
 export const migratePlayerCache = async() => {
   const newCachePath = privateStorageDirectoryPath + '/TrackPlayer'
   if (await existsFile(newCachePath)) return
