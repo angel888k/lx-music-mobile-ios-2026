@@ -5,18 +5,21 @@ import { LIST_IDS } from '@/config/constant'
 import listState from '@/store/list/state'
 import syncSourceList from '@/core/syncSourceList'
 import { confirmDialog, toMD5, toast } from '@/utils/tools'
+import settingState from '@/store/setting/state'
 
 
 const getListId = (id: string) => `board__${id}`
+const getTargetPlayListId = (id: string) => settingState.setting['list.isClickPlayList'] ? LIST_IDS.TEMP : getListId(id)
 
 export const handlePlay = async(id: string, list?: LX.Music.MusicInfoOnline[], index = 0) => {
   let isPlayingList = false
   // console.log(list)
   const listId = getListId(id)
+  const targetListId = getTargetPlayListId(id)
   if (!list?.length) list = (await getListDetail(id, 1)).list
   if (list?.length) {
     await setTempList(listId, [...list])
-    void playList(listId, index)
+    void playList(targetListId, index)
     isPlayingList = true
   }
   const fullList = await getListDetailAll(id)
@@ -27,7 +30,7 @@ export const handlePlay = async(id: string, list?: LX.Music.MusicInfoOnline[], i
     }
   } else {
     await setTempList(listId, [...fullList])
-    void playList(listId, index)
+    void playList(targetListId, index)
   }
 }
 
